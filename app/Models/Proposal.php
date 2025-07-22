@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Proposal extends Model
 {
-    protected $gtuarded = [];
+    use SoftDeletes;
+    
+    protected $guarded = []; // Fixed typo from $gtuarded
     
     const PROPOSAL_STATUSES = [
         "SUBMITTED" => "submitted",
@@ -22,5 +25,26 @@ class Proposal extends Model
             $statuses[$key] = ucfirst($status);
         }
         return $asKeys ? $statuses : array_keys($statuses);
+    }
+
+    // Relationships
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function escrowTransactions()
+    {
+        return $this->hasMany(EscrowTransaction::class);
+    }
+
+    public function transactionLedgers()
+    {
+        return $this->hasMany(TransactionLedger::class);
+    }
+
+    public function stories()
+    {
+        return $this->hasMany(Storie::class);
     }
 }

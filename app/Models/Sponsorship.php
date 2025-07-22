@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sponsorship extends Model
 {
+    use SoftDeletes;
+    
     protected $guarded = [];
 
     const SPONSORSHIP_STATUSES = [
@@ -22,5 +25,11 @@ class Sponsorship extends Model
             $statuses[$key] = ucfirst($status);
         }
         return $asKeys ? $statuses : array_keys($statuses);
+    }
+
+    // Relationships
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

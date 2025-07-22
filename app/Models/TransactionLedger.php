@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TransactionLedger extends Model
 {
+    use SoftDeletes;
+    
     protected $guarded = [];
 
     const TransactionLedger_STATUS = [
@@ -37,5 +40,16 @@ class TransactionLedger extends Model
             $directions[$key] = ucfirst($direction);
         }
         return $asKeys ? $directions : array_keys($directions);
+    }
+
+    // Relationships
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function proposal()
+    {
+        return $this->belongsTo(Proposal::class);
     }
 }
