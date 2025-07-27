@@ -3,16 +3,32 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles, SoftDeletes;
+    use HasFactory, Notifiable, HasRoles, SoftDeletes, HasUuids;
+
+    /**
+     * Indicates if the model's ID is auto-incrementing.
+     *
+     * @var bool
+     */
+    public $incrementing = false;
+
+    /**
+     * The data type of the auto-incrementing ID.
+     *
+     * @var string
+     */
+    protected $keyType = 'string';
 
     /**
      * Get the identifier that will be stored in the subject claim of the JWT.
@@ -40,9 +56,14 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
+        'phone_number',
         'email',
         'password',
+        'otp',
+        'is_verified',
+        'email_verified_at',
     ];
 
     /**
@@ -65,11 +86,12 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_verified' => 'boolean',
         ];
     }
 
     const USER_ROLES = [
-        "ENTERPRENEUR" => "entrepreneur",
+        "ENTREPRENEUR" => "entrepreneur", // Fixed spelling
         "SPONSOR" => "sponsor",
         "ADMIN" => "admin",
     ];
@@ -81,6 +103,40 @@ class User extends Authenticatable
             $roles[$key] = ucfirst($role);
         }
         return $asKeys ? $roles : array_keys($roles);
+    }
+
+    // Role Helper Methods
+    public function isEntrepreneur(): bool
+    {
+        return $this->hasRole('entrepreneur');
+    }
+
+    public function isSponsor(): bool
+    {
+        return $this->hasRole('sponsor');
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function canManageProposal($proposal): bool
+    {
+        return $this->isAdmin() || 
+               ($this->isEntrepreneur() && $this->id === $proposal->user_id);
+    }
+
+    public function canSponsorProposal($proposal): bool
+    {
+        return $this->isSponsor() && $this->id !== $proposal->user_id;
+    }
+
+    public function canViewProposal($proposal): bool
+    {
+        return $this->isAdmin() || 
+               $this->id === $proposal->user_id || 
+               $this->isSponsor();
     }
 
     // Relationships
