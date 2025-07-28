@@ -18,6 +18,7 @@ return new class extends Migration
             $table->uuid('user_id');
             $table->string('title');
             $table->text('message');
+            $table->string('type')->nullable(); // Optional type field for categorization
             $table->enum('status', Notification::listNotificationStatuses(false))->default(Notification::NOTIFICATION_STATUSES['unread']);
             $table->timestamps();
             $table->softDeletes(); 
