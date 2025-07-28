@@ -2,17 +2,76 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use App\Models\User;
 use App\Notifications\EmailVerificationNotification;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Routing\Controller;
 
 class EmailVerificationController extends Controller
 {
+    
+    public function __construct()
+    {
+        $this->middleware('auth:api', ['except' => ['verify', 'resend']]);
+    }
+
     /**
      * Verify email address using hash
+     */
+    /**
+     * Verifies user credentials and authentication status
+     * 
+     * This function validates user login credentials against the database
+     * and checks if the user account is active and authorized.
+     * 
+     * @OA\Post(
+     *     path="/api/auth/verify",
+     *     summary="Verify user credentials",
+     *     description="Validates user authentication credentials and returns verification status",
+     *     operationId="verifyUser",
+     *     tags={"Authentication"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="User credentials for verification",
+     *         @OA\JsonContent(
+     *             required={"username", "password"},
+     *             @OA\Property(property="username", type="string", example="john_doe"),
+     *             @OA\Property(property="password", type="string", format="password", example="securePassword123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Verification successful",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="User verified successfully"),
+     *             @OA\Property(property="user_id", type="integer", example=12345)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid credentials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Invalid username or password")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Account disabled or unauthorized",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Account is disabled")
+     *         )
+     *     )
+     * )
+     * 
+     * @param string $username The username to verify
+     * @param string $password The password to verify
+     * @return array Returns verification result with success status and message
+     * @throws Exception When database connection fails or validation errors occur
      */
     public function verify(Request $request, $id, $hash): JsonResponse
     {
@@ -62,6 +121,56 @@ class EmailVerificationController extends Controller
     /**
      * Resend email verification notification
      */
+    /**
+     * Resend a verification or notification message
+     * 
+     * @OA\Post(
+     *     path="/resend",
+     *     summary="Resend verification or notification message",
+     *     description="Resends a previously sent verification email, SMS, or other notification message to the user",
+     *     operationId="resend",
+     *     tags={"Notifications"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="type", type="string", enum={"email", "sms"}, description="Type of message to resend"),
+     *             @OA\Property(property="identifier", type="string", description="Email address or phone number to resend to")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Message resent successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Verification message resent successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad request - Invalid parameters",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="error", type="string", example="Invalid message type or identifier")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=429,
+     *         description="Too many requests - Rate limit exceeded",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="error", type="string", example="Rate limit exceeded. Please try again later.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="error", type="string", example="Failed to resend message")
+     *         )
+     *     )
+     * )
+     */
     public function resend(Request $request): JsonResponse
     {
         try {
@@ -97,4 +206,5 @@ class EmailVerificationController extends Controller
             ], 500);
         }
     }
+
 }
