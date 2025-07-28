@@ -222,6 +222,40 @@ class UserController extends Controller
     /**
      * Display the specified user.
      */
+    /**
+     * @OA\Get(
+     *     path="/api/users/{id}",
+     *     summary="Retrieve a specific user",
+     *     description="Get detailed information of a user by ID. Users can view their own profile, or admins can view any user.",
+     *     operationId="getUser",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="User ID",
+     *         required=true,
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", ref="#/components/schemas/User"),
+     *             @OA\Property(property="message", type="string", example="User retrieved successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - Insufficient permissions",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="You do not have permission to view this user")
+     *         )
+     *     )
+     * )
+     */
     public function show(User $user): JsonResponse
     {
         $currentUser = Auth::user();
@@ -238,6 +272,63 @@ class UserController extends Controller
 
     /**
      * Update the specified user.
+     */
+    /**
+     * @OA\Put(
+     *     path="/api/users/{id}",
+     *     summary="Update a user",
+     *     description="Update a specific user's details. Users can update their own information while administrators can update any user's information.",
+     *     operationId="updateUser",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="User ID",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer"
+     *         )
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="first_name", type="string", example="Jane"),
+     *             @OA\Property(property="last_name", type="string", example="Doe"),
+     *             @OA\Property(property="email", type="string", format="email", example="jane@example.com"),
+     *             @OA\Property(property="phone_number", type="string", example="+19876543210"),
+     *             @OA\Property(property="password", type="string", format="password", example="newpassword123"),
+     *             @OA\Property(property="password_confirmation", type="string", format="password", example="newpassword123"),
+     *             @OA\Property(property="role", type="string", enum={"admin", "entrepreneur", "sponsor"}, example="entrepreneur")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", ref="#/components/schemas/User"),
+     *             @OA\Property(property="message", type="string", example="User updated successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - Insufficient permissions",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="You do not have permission to update this user")
+     *         )
+     *     )
+     * )
      */
     public function update(Request $request, User $user): JsonResponse
     {
@@ -293,6 +384,58 @@ class UserController extends Controller
      * Remove the specified user.
      * Only accessible by admins.
      */
+    /**
+     * @OA\Delete(
+     *     path="/api/users/{id}",
+     *     summary="Delete a user",
+     *     description="Deletes a specific user. Admins can delete any user except themselves.",
+     *     operationId="deleteUser",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         description="User ID",
+     *         required=true,
+     *         @OA\Schema(
+     *             type="integer",
+     *             example=1
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="User deleted successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="User deleted successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad Request - Self-deletion attempt",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="You cannot delete your own account")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - Insufficient permissions",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="You do not have permission to delete users")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal Server Error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Failed to delete user")
+     *         )
+     *     )
+     * )
+     */
     public function destroy(User $user): JsonResponse
     {
         $currentUser = Auth::user();
@@ -315,6 +458,47 @@ class UserController extends Controller
     /**
      * Get current authenticated user profile.
      */
+    /**
+     * @OA\Get(
+     *     path="/api/profile",
+     *     summary="Retrieve current authenticated user profile",
+     *     description="Returns the profile details of the currently logged in user including roles and permissions.",
+     *     operationId="getProfile",
+     *     tags={"Profile"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Profile retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Profile retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="first_name", type="string", example="John"),
+     *                 @OA\Property(property="last_name", type="string", example="Doe"),
+     *                 @OA\Property(property="email", type="string", example="john.doe@example.com"),
+     *                 @OA\Property(property="phone_number", type="string", example="+1234567890"),
+     *                 @OA\Property(property="roles", type="array",
+     *                     @OA\Items(type="string", example="admin")
+     *                 ),
+     *                 @OA\Property(property="permissions", type="array",
+     *                     @OA\Items(type="string", example="edit-users")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - Invalid or missing token",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Unauthorized")
+     *         )
+     *     )
+     * )
+     */
     public function profile(): JsonResponse
     {
         $user = User::with('roles', 'permissions')->find(Auth::id());
@@ -324,6 +508,68 @@ class UserController extends Controller
 
     /**
      * Update current authenticated user profile.
+     */
+    /**
+     * @OA\Put(
+     *     path="/api/profile",
+     *     summary="Update current user profile",
+     *     description="Update the profile information of the currently authenticated user. Users can update their personal details and optionally change their password by providing the current password.",
+     *     operationId="updateProfile",
+     *     tags={"Profile"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=false,
+     *         description="Profile update data - all fields are optional",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="first_name", type="string", maxLength=255, example="John", description="User's first name"),
+     *             @OA\Property(property="last_name", type="string", maxLength=255, example="Doe", description="User's last name"),
+     *             @OA\Property(property="email", type="string", format="email", example="john.doe@example.com", description="User's email address (must be unique)"),
+     *             @OA\Property(property="phone_number", type="string", example="+1234567890", description="User's phone number (must be unique)"),
+     *             @OA\Property(property="password", type="string", format="password", minLength=8, example="newpassword123", description="New password (optional)"),
+     *             @OA\Property(property="current_password", type="string", format="password", example="currentpassword123", description="Current password (required when changing password)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Profile updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Profile updated successfully"),
+     *             @OA\Property(property="data", ref="#/components/schemas/User")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad Request - Current password is incorrect",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Current password is incorrect")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - Invalid or missing token",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Unauthorized")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(property="errors", type="object", 
+     *                 example={
+     *                     "email": {"The email has already been taken."},
+     *                     "phone_number": {"The phone number has already been taken."},
+     *                     "current_password": {"The current password field is required when password is present."}
+     *                 }
+     *             )
+     *         )
+     *     )
+     * )
      */
     public function updateProfile(Request $request): JsonResponse
     {
@@ -357,6 +603,86 @@ class UserController extends Controller
         return $this->success($user, 'Profile updated successfully');
     }
 
+    /**
+     * User login.
+     */
+    /**
+     * @OA\Post(
+     *     path="/api/login",
+     *     summary="User login",
+     *     description="Authenticate a user with email and password, returns JWT token and user information",
+     *     operationId="login",
+     *     tags={"Authentication"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="User login credentials",
+     *         @OA\JsonContent(
+     *             required={"email", "password"},
+     *             @OA\Property(
+     *                 property="email",
+     *                 type="string",
+     *                 format="email",
+     *                 example="john.doe@example.com",
+     *                 description="User's email address"
+     *             ),
+     *             @OA\Property(
+     *                 property="password",
+     *                 type="string",
+     *                 format="password",
+     *                 example="password123",
+     *                 description="User's password"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Login successful",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Logged in successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="token",
+     *                     type="string",
+     *                     example="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDAvYXBpL2xvZ2luIiwiaWF0IjoxNjMwNTQ0ODAwLCJleHAiOjE2MzA1NDg0MDAsIm5iZiI6MTYzMDU0NDgwMCwianRpIjoiSGxaQWVZd3ByUVg1a0N6cCIsInN1YiI6MSwicHJ2IjoiMjNiZDVjODk0OWY2MDBhZGIzOWU3MDFjNDAwODcyZGI3YTU5NzZmNyJ9.Tx8z0qK3OOq5Db8I9hPNNX5Y7r3_vP5vKBIZt5_M1wU",
+     *                     description="JWT authentication token"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="user",
+     *                     ref="#/components/schemas/User",
+     *                     description="Authenticated user information"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid credentials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Invalid credentials")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 example={
+     *                     "email": {"The email field is required.", "The email must be a valid email address."},
+     *                     "password": {"The password field is required."}
+     *                 }
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function login(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -380,6 +706,80 @@ class UserController extends Controller
         ], 'Logged in successfully');
     }
 
+    /**
+     * Handle forgot password request.
+     */
+
+    /**
+     * Handle forgot password request
+     * 
+     * This endpoint allows users to request a password reset by providing their email address.
+     * If the email exists in the system, a password reset link will be sent to the user.
+     * 
+     * @OA\Post(
+     *     path="/forgot-password",
+     *     tags={"Authentication"},
+     *     summary="Request password reset",
+     *     description="Send password reset link to user's email address",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email"},
+     *             @OA\Property(
+     *                 property="email",
+     *                 type="string",
+     *                 format="email",
+     *                 description="User's email address",
+     *                 example="user@example.com"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password reset link sent successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(
+     *                 property="message",
+     *                 type="string",
+     *                 example="Password reset link has been sent to your email"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Invalid email format",
+     *         @OA\JsonContent(
+     *             @OA\Property(
+     *                 property="error",
+     *                 type="string",
+     *                 example="Please provide a valid email address"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="Email not found",
+     *         @OA\JsonContent(
+     *             @OA\Property(
+     *                 property="error",
+     *                 type="string",
+     *                 example="No account found with this email address"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(
+     *                 property="error",
+     *                 type="string",
+     *                 example="Failed to send password reset email"
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function forgotPassword(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
