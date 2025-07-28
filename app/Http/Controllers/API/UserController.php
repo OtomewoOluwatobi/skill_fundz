@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Notification;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Support\Facades\URL;
 
 class UserController extends Controller
 {
@@ -129,186 +131,42 @@ class UserController extends Controller
             return $this->error('Failed to create user: ' . $e->getMessage(), 500);
         }
     }
-
     /**
-     * @OA\Get(
-     *     path="/api/users",
-     *     summary="Get list of users",
-     *     description="Get paginated list of users (Admin only)",
-     *     operationId="getUsers",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number",
-     *         required=false,
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *     @OA\Parameter(
-     *         name="per_page",
-     *         in="query",
-     *         description="Items per page",
-     *         required=false,
-     *         @OA\Schema(type="integer", example=15)
-     *     ),
-     *     @OA\Parameter(
-     *         name="search",
-     *         in="query",
-     *         description="Search term",
-     *         required=false,
-     *         @OA\Schema(type="string", example="john")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Users retrieved successfully",
+     * @OA\Post(
+     *     path="/api/forgot-password",
+     *     summary="Send password reset link",
+     *     description="Sends a password reset link to the user's registered email address. The user will receive an email with a secure link to reset their password.",
+     *     operationId="forgotPassword",
+     *     tags={"Authentication"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Email address to send password reset link to",
      *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", type="object",
-     *                 @OA\Property(property="users", type="object",
-     *                     @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/User")),
-     *                     @OA\Property(property="current_page", type="integer", example=1),
-     *                     @OA\Property(property="last_page", type="integer", example=5),
-     *                     @OA\Property(property="total", type="integer", example=100)
-     *                 )
+     *             required={"email"},
+     *             @OA\Property(
+     *                 property="email",
+     *                 type="string",
+     *                 format="email",
+     *                 example="john.doe@example.com",
+     *                 description="User's registered email address"
      *             )
      *         )
      *     ),
      *     @OA\Response(
-     *         response=403,
-     *         description="Forbidden - Insufficient permissions",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="You do not have permission to view users")
-     *         )
-     *     )
-     * )
-     */
-    public function index(Request $request): JsonResponse
-    {
-        /** @var \Illuminate\Contracts\Auth\Access\Authorizable $currentUser */
-        $currentUser = Auth::user();
-
-        // Check permission
-        if (!$currentUser->can('view-users')) {
-            return $this->forbidden('You do not have permission to view users');
-        }
-
-        $query = User::with('roles');
-
-        // Apply filters
-        if ($request->has('role')) {
-            $query->role($request->role);
-        }
-
-        if ($request->has('verified')) {
-            $query->where('is_verified', $request->boolean('verified'));
-        }
-
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        $users = $query->paginate($request->get('per_page', 15));
-
-        return $this->success($users, 'Users retrieved successfully');
-    }
-
-    /**
-     * Display the specified user.
-     */
-    /**
-     * @OA\Get(
-     *     path="/api/users/{id}",
-     *     summary="Retrieve a specific user",
-     *     description="Get detailed information of a user by ID. Users can view their own profile, or admins can view any user.",
-     *     operationId="getUser",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="User ID",
-     *         required=true,
-     *         @OA\Schema(type="integer", example=1)
-     *     ),
-     *     @OA\Response(
      *         response=200,
-     *         description="User retrieved successfully",
+     *         description="Password reset link sent successfully",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", ref="#/components/schemas/User"),
-     *             @OA\Property(property="message", type="string", example="User retrieved successfully")
+     *             @OA\Property(property="message", type="string", example="Password reset link sent to your email"),
+     *             @OA\Property(property="data", type="null", example=null)
      *         )
      *     ),
      *     @OA\Response(
-     *         response=403,
-     *         description="Forbidden - Insufficient permissions",
+     *         response=404,
+     *         description="User not found",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="You do not have permission to view this user")
-     *         )
-     *     )
-     * )
-     */
-    public function show(User $user): JsonResponse
-    {
-        $currentUser = Auth::user();
-        /** @var \Illuminate\Contracts\Auth\Access\Authorizable $currentUser */
-        // Check permission - users can view their own profile, admins can view any
-        if (!$currentUser->can('view-users') && $currentUser->id !== $user->id) {
-            return $this->forbidden('You do not have permission to view this user');
-        }
-
-        $user->load('roles', 'permissions');
-
-        return $this->success($user, 'User retrieved successfully');
-    }
-
-    /**
-     * Update the specified user.
-     */
-    /**
-     * @OA\Put(
-     *     path="/api/users/{id}",
-     *     summary="Update a user",
-     *     description="Update a specific user's details. Users can update their own information while administrators can update any user's information.",
-     *     operationId="updateUser",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="User ID",
-     *         required=true,
-     *         @OA\Schema(
-     *             type="integer"
-     *         )
-     *     ),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             @OA\Property(property="first_name", type="string", example="Jane"),
-     *             @OA\Property(property="last_name", type="string", example="Doe"),
-     *             @OA\Property(property="email", type="string", format="email", example="jane@example.com"),
-     *             @OA\Property(property="phone_number", type="string", example="+19876543210"),
-     *             @OA\Property(property="password", type="string", format="password", example="newpassword123"),
-     *             @OA\Property(property="password_confirmation", type="string", format="password", example="newpassword123"),
-     *             @OA\Property(property="role", type="string", enum={"admin", "entrepreneur", "sponsor"}, example="entrepreneur")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="User updated successfully",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="data", ref="#/components/schemas/User"),
-     *             @OA\Property(property="message", type="string", example="User updated successfully")
+     *             @OA\Property(property="message", type="string", example="User not found")
      *         )
      *     ),
      *     @OA\Response(
@@ -317,142 +175,51 @@ class UserController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
      *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(property="errors", type="object")
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 example={
+     *                     "email": {
+     *                         "The email field is required.",
+     *                         "The email must be a valid email address.",
+     *                         "The selected email is invalid."
+     *                     }
+     *                 }
+     *             )
      *         )
      *     ),
      *     @OA\Response(
-     *         response=403,
-     *         description="Forbidden - Insufficient permissions",
+     *         response=500,
+     *         description="Internal server error",
      *         @OA\JsonContent(
      *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="You do not have permission to update this user")
+     *             @OA\Property(property="message", type="string", example="Failed to send password reset email")
      *         )
      *     )
      * )
      */
-    public function update(Request $request, User $user): JsonResponse
+    public function forgotPassword(Request $request): JsonResponse
     {
-        $currentUser = Auth::user();
-        /** @var \Illuminate\Contracts\Auth\Access\Authorizable $currentUser */
-        // Check permission - users can edit their own profile, admins can edit any
-        $canEdit = $currentUser->can('edit-users') ||
-            ($currentUser->id === $user->id);
-
-        if (!$canEdit) {
-            return $this->forbidden('You do not have permission to update this user');
-        }
-
-        $rules = [
-            'first_name' => 'string|max:255',
-            'last_name' => 'string|max:255',
-            'email' => ['email', Rule::unique('users')->ignore($user->id)],
-            'phone_number' => ['string', Rule::unique('users')->ignore($user->id)],
-            'password' => 'string|min:8|confirmed'
-        ];
-
-        // Only admins can change roles
-        if ($currentUser->can('manage-user-roles')) {
-            $rules['role'] = ['string', Rule::in(['admin', 'entrepreneur', 'sponsor'])];
-        }
-
-        $validator = Validator::make($request->all(), $rules);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+        ]);
 
         if ($validator->fails()) {
             return $this->validationError($validator->errors());
         }
 
-        $updateData = $request->only(['first_name', 'last_name', 'email', 'phone_number']);
-
-        if ($request->has('password')) {
-            $updateData['password'] = Hash::make($request->password);
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return $this->error('User not found', 404);
         }
 
-        $user->fill($updateData);
-        $user->save();
+        // Generate a password reset token
+        $token = app('auth.password.broker')->createToken($user);
 
-        // Update role if provided and user has permission
-        if ($request->has('role') && $currentUser->can('manage-user-roles')) {
-            $user->syncRoles([$request->role]);
-        }
+        // Send the reset link via email
+        $user->sendPasswordResetNotification($token);
 
-        $user->load('roles');
-
-        return $this->success($user, 'User updated successfully');
-    }
-
-    /**
-     * Remove the specified user.
-     * Only accessible by admins.
-     */
-    /**
-     * @OA\Delete(
-     *     path="/api/users/{id}",
-     *     summary="Delete a user",
-     *     description="Deletes a specific user. Admins can delete any user except themselves.",
-     *     operationId="deleteUser",
-     *     tags={"Users"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="id",
-     *         in="path",
-     *         description="User ID",
-     *         required=true,
-     *         @OA\Schema(
-     *             type="integer",
-     *             example=1
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="User deleted successfully",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="User deleted successfully")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=400,
-     *         description="Bad Request - Self-deletion attempt",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="You cannot delete your own account")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=403,
-     *         description="Forbidden - Insufficient permissions",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="You do not have permission to delete users")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Internal Server Error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to delete user")
-     *         )
-     *     )
-     * )
-     */
-    public function destroy(User $user): JsonResponse
-    {
-        $currentUser = Auth::user();
-        /** @var \Illuminate\Contracts\Auth\Access\Authorizable $currentUser */
-        // Check permission
-        if (!$currentUser->can('delete-users')) {
-            return $this->forbidden('You do not have permission to delete users');
-        }
-
-        // Prevent self-deletion
-        if ($currentUser->id === $user->id) {
-            return $this->error('You cannot delete your own account', 400);
-        }
-
-        $user->delete();
-
-        return $this->success(null, 'User deleted successfully');
+        return $this->success(null, 'Password reset link sent to your email');
     }
 
     /**
@@ -705,7 +472,7 @@ class UserController extends Controller
             'user'  => $user
         ], 'Logged in successfully');
     }
-    
+
     /**
      * User logout.
      */
@@ -746,6 +513,159 @@ class UserController extends Controller
         }
 
         return $this->success(null, 'Logged out successfully');
+    }
+
+    /**
+     * Verify email address using hash
+     */
+    /**
+     * Verifies user credentials and authentication status
+     * 
+     * This function validates user login credentials against the database
+     * and checks if the user account is active and authorized.
+     * 
+     * @OA\Post(
+     *     path="/api/auth/verify",
+     *     summary="Verify user credentials",
+     *     description="Validates user authentication credentials and returns verification status",
+     *     operationId="verifyUser",
+     *     tags={"Authentication"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="User credentials for verification",
+     *         @OA\JsonContent(
+     *             required={"username", "password"},
+     *             @OA\Property(property="username", type="string", example="john_doe"),
+     *             @OA\Property(property="password", type="string", format="password", example="securePassword123")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Verification successful",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="User verified successfully"),
+     *             @OA\Property(property="user_id", type="integer", example=12345)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Invalid credentials",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Invalid username or password")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Account disabled or unauthorized",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Account is disabled")
+     *         )
+     *     )
+     * )
+     * 
+     * @param string $username The username to verify
+     * @param string $password The password to verify
+     * @return array Returns verification result with success status and message
+     * @throws Exception When database connection fails or validation errors occur
+     */
+    public function verify(Request $request, $id, $hash): JsonResponse
+    {
+        try {
+            $user = User::findOrFail($id);
+
+            if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+                return $this->error('Invalid verification link', 400);
+            }
+
+            if (!URL::hasValidSignature($request)) {
+                return $this->error('Invalid or expired verification link', 400);
+            }
+
+            if ($user->hasVerifiedEmail()) {
+                return $this->error('Email already verified', 400);
+            }
+
+            if ($user->markEmailAsVerified()) {
+                event(new Verified($user));
+                return $this->success(null, 'Email verified successfully');
+            }
+
+            return $this->error('Failed to verify email', 500);
+        } catch (\Exception $e) {
+            return $this->error('User not found', 404);
+        }
+    }
+
+    /**
+     * Resend email verification notification
+     */
+    /**
+     * Resend a verification or notification message
+     * 
+     * @OA\Post(
+     *     path="/resend",
+     *     summary="Resend verification or notification message",
+     *     description="Resends a previously sent verification email, SMS, or other notification message to the user",
+     *     operationId="resend",
+     *     tags={"Notifications"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="type", type="string", enum={"email", "sms"}, description="Type of message to resend"),
+     *             @OA\Property(property="identifier", type="string", description="Email address or phone number to resend to")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Message resent successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Verification message resent successfully")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Bad request - Invalid parameters",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="error", type="string", example="Invalid message type or identifier")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=429,
+     *         description="Too many requests - Rate limit exceeded",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="error", type="string", example="Rate limit exceeded. Please try again later.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="error", type="string", example="Failed to resend message")
+     *         )
+     *     )
+     * )
+     */
+    public function resend(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return $this->error('Email already verified', 400);
+        }
+
+        try {
+            $user->sendEmailVerificationNotification();
+            return $this->success(null, 'Verification email sent successfully');
+        } catch (\Exception $e) {
+            return $this->error('Failed to send verification email', 500);
+        }
     }
 
     /**
