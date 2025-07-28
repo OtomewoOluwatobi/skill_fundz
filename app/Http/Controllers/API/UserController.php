@@ -23,46 +23,46 @@ class UserController extends Controller
     }
 
     /**
-     * Display a listing of users.
-     * Only accessible by admins.
-     */
-    public function index(Request $request): JsonResponse
-    {
-        /** @var \Illuminate\Contracts\Auth\Access\Authorizable $currentUser */
-        $currentUser = Auth::user();
-
-        // Check permission
-        if (!$currentUser->can('view-users')) {
-            return $this->forbidden('You do not have permission to view users');
-        }
-
-        $query = User::with('roles');
-
-        // Apply filters
-        if ($request->has('role')) {
-            $query->role($request->role);
-        }
-
-        if ($request->has('verified')) {
-            $query->where('is_verified', $request->boolean('verified'));
-        }
-
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        $users = $query->paginate($request->get('per_page', 15));
-
-        return $this->success($users, 'Users retrieved successfully');
-    }
-
-    /**
-     * Store a newly created user.
+     * @OA\Post(
+     *     path="/api/register",
+     *     summary="Register a new user",
+     *     description="Register a new user account",
+     *     operationId="register",
+     *     tags={"Authentication"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"first_name","last_name","email","phone_number","password","role"},
+     *             @OA\Property(property="first_name", type="string", example="John"),
+     *             @OA\Property(property="last_name", type="string", example="Doe"),
+     *             @OA\Property(property="email", type="string", format="email", example="john@example.com"),
+     *             @OA\Property(property="phone_number", type="string", example="+1234567890"),
+     *             @OA\Property(property="password", type="string", format="password", example="password123"),
+     *             @OA\Property(property="role", type="string", enum={"entrepreneur", "sponsor"}, example="entrepreneur")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="User registered successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="User registered successfully"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="user", ref="#/components/schemas/User"),
+     *                 @OA\Property(property="token", type="string", example="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(property="errors", type="object")
+     *         )
+     *     )
+     * )
      */
     public function register(Request $request): JsonResponse
     {
@@ -128,6 +128,95 @@ class UserController extends Controller
         } catch (\Exception $e) {
             return $this->error('Failed to create user: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/users",
+     *     summary="Get list of users",
+     *     description="Get paginated list of users (Admin only)",
+     *     operationId="getUsers",
+     *     tags={"Users"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number",
+     *         required=false,
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         description="Items per page",
+     *         required=false,
+     *         @OA\Schema(type="integer", example=15)
+     *     ),
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         description="Search term",
+     *         required=false,
+     *         @OA\Schema(type="string", example="john")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Users retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="users", type="object",
+     *                     @OA\Property(property="data", type="array", @OA\Items(ref="#/components/schemas/User")),
+     *                     @OA\Property(property="current_page", type="integer", example=1),
+     *                     @OA\Property(property="last_page", type="integer", example=5),
+     *                     @OA\Property(property="total", type="integer", example=100)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Forbidden - Insufficient permissions",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="You do not have permission to view users")
+     *         )
+     *     )
+     * )
+     */
+    public function index(Request $request): JsonResponse
+    {
+        /** @var \Illuminate\Contracts\Auth\Access\Authorizable $currentUser */
+        $currentUser = Auth::user();
+
+        // Check permission
+        if (!$currentUser->can('view-users')) {
+            return $this->forbidden('You do not have permission to view users');
+        }
+
+        $query = User::with('roles');
+
+        // Apply filters
+        if ($request->has('role')) {
+            $query->role($request->role);
+        }
+
+        if ($request->has('verified')) {
+            $query->where('is_verified', $request->boolean('verified'));
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $users = $query->paginate($request->get('per_page', 15));
+
+        return $this->success($users, 'Users retrieved successfully');
     }
 
     /**
