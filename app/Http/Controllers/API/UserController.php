@@ -705,123 +705,38 @@ class UserController extends Controller
             'user'  => $user
         ], 'Logged in successfully');
     }
-
+    
     /**
-     * Handle forgot password request.
+     * User logout.
      */
-
     /**
-     * Handle forgot password request
+     * User Logout
      * 
-     * This endpoint allows users to request a password reset by providing their email address.
-     * If the email exists in the system, a password reset link will be sent to the user.
+     * Logs out the currently authenticated user by invalidating their session/token.
+     * This endpoint terminates the user's active session and requires authentication.
      * 
      * @OA\Post(
-     *     path="/forgot-password",
+     *     path="/logout",
      *     tags={"Authentication"},
-     *     summary="Request password reset",
-     *     description="Send password reset link to user's email address",
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             required={"email"},
-     *             @OA\Property(
-     *                 property="email",
-     *                 type="string",
-     *                 format="email",
-     *                 description="User's email address",
-     *                 example="user@example.com"
-     *             )
-     *         )
-     *     ),
+     *     summary="Logout user",
+     *     description="Logs out the currently authenticated user and invalidates their session",
+     *     security={{"bearerAuth":{}}},
      *     @OA\Response(
      *         response=200,
-     *         description="Password reset link sent successfully",
+     *         description="Successfully logged out",
      *         @OA\JsonContent(
-     *             @OA\Property(
-     *                 property="message",
-     *                 type="string",
-     *                 example="Password reset link has been sent to your email"
-     *             )
+     *             @OA\Property(property="message", type="string", example="Successfully logged out")
      *         )
      *     ),
      *     @OA\Response(
-     *         response=400,
-     *         description="Invalid email format",
+     *         response=401,
+     *         description="Unauthorized - Invalid or missing authentication token",
      *         @OA\JsonContent(
-     *             @OA\Property(
-     *                 property="error",
-     *                 type="string",
-     *                 example="Please provide a valid email address"
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="Email not found",
-     *         @OA\JsonContent(
-     *             @OA\Property(
-     *                 property="error",
-     *                 type="string",
-     *                 example="No account found with this email address"
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Internal server error",
-     *         @OA\JsonContent(
-     *             @OA\Property(
-     *                 property="error",
-     *                 type="string",
-     *                 example="Failed to send password reset email"
-     *             )
+     *             @OA\Property(property="error", type="string", example="Unauthorized")
      *         )
      *     )
      * )
      */
-    public function forgotPassword(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email'
-        ]);
-
-        if ($validator->fails()) {
-            return $this->validationError($validator->errors());
-        }
-
-        $user = User::where('email', $request->email)->first();
-
-        // If the user exists, you would dispatch a job or send a notification with the password reset token.
-        // For brevity, the email sending logic is omitted.
-
-        return $this->success(null, 'If an account exists, a password reset email has been sent');
-    }
-
-    public function reVerifyEmail(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email'
-        ]);
-
-        if ($validator->fails()) {
-            return $this->validationError($validator->errors());
-        }
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return $this->error('User not found', 404);
-        }
-
-        if (!$user->hasVerifiedEmail()) {
-            $user->sendEmailVerificationNotification();
-            return $this->success(null, 'Verification email resent');
-        }
-
-        return $this->error('Email is already verified', 400);
-    }
-
     public function logout(Request $request): JsonResponse
     {
         try {
