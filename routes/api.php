@@ -18,6 +18,8 @@ use App\Http\Controllers\API\AdminController;
 // Public Authentication routes (no middleware required)
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/login', [UserController::class, 'login']);
+Route::post('/forgot-password', [UserController::class, 'forgotPassword']);
+Route::post('/reset-password', [UserController::class, 'resetPassword']);
 
 // Email verification routes (public - no auth required for verify, auth required for resend)
 Route::prefix('email')->name('verification.')->group(function () {

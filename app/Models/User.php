@@ -6,9 +6,11 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Auth\Passwords\CanResetPassword; // Add this
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Spatie\Permission\Traits\HasRoles;
 use App\Notifications\EmailVerificationNotification;
+use App\Notifications\ResetPasswordNotification; // Add this
 
 /**
  * @OA\Schema(
@@ -30,7 +32,7 @@ use App\Notifications\EmailVerificationNotification;
  */
 class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, CanResetPassword; // Add CanResetPassword
 
     /**
      * Indicates if the model's ID is auto-incrementing.
@@ -219,9 +221,25 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     }
 
     /**
+     * Send the password reset notification.
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
      * Get the email address that should be used for verification.
      */
     public function getEmailForVerification(): string
+    {
+        return $this->email;
+    }
+
+    /**
+     * Get the e-mail address where password reset links are sent.
+     */
+    public function getEmailForPasswordReset()
     {
         return $this->email;
     }

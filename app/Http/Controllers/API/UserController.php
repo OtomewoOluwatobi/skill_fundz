@@ -16,12 +16,14 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\Notification;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login', 'register', 'forgotPassword']]);
+        $this->middleware('auth:api', ['except' => ['login', 'register', 'forgotPassword', 'resetPassword']]);
     }
 
     /**
@@ -131,71 +133,24 @@ class UserController extends Controller
             return $this->error('Failed to create user: ' . $e->getMessage(), 500);
         }
     }
+
     /**
      * @OA\Post(
      *     path="/api/forgot-password",
      *     summary="Send password reset link",
-     *     description="Sends a password reset link to the user's registered email address. The user will receive an email with a secure link to reset their password.",
+     *     description="Sends a password reset link to the user's registered email address",
      *     operationId="forgotPassword",
      *     tags={"Authentication"},
      *     @OA\RequestBody(
      *         required=true,
-     *         description="Email address to send password reset link to",
      *         @OA\JsonContent(
      *             required={"email"},
-     *             @OA\Property(
-     *                 property="email",
-     *                 type="string",
-     *                 format="email",
-     *                 example="john.doe@example.com",
-     *                 description="User's registered email address"
-     *             )
+     *             @OA\Property(property="email", type="string", format="email", example="john@example.com")
      *         )
      *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="Password reset link sent successfully",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=true),
-     *             @OA\Property(property="message", type="string", example="Password reset link sent to your email"),
-     *             @OA\Property(property="data", type="null", example=null)
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=404,
-     *         description="User not found",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="User not found")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=422,
-     *         description="Validation error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Validation failed"),
-     *             @OA\Property(
-     *                 property="errors",
-     *                 type="object",
-     *                 example={
-     *                     "email": {
-     *                         "The email field is required.",
-     *                         "The email must be a valid email address.",
-     *                         "The selected email is invalid."
-     *                     }
-     *                 }
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=500,
-     *         description="Internal server error",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="success", type="boolean", example=false),
-     *             @OA\Property(property="message", type="string", example="Failed to send password reset email")
-     *         )
-     *     )
+     *     @OA\Response(response=200, description="Password reset link sent successfully"),
+     *     @OA\Response(response=404, description="User not found"),
+     *     @OA\Response(response=422, description="Validation error")
      * )
      */
     public function forgotPassword(Request $request): JsonResponse
@@ -208,18 +163,79 @@ class UserController extends Controller
             return $this->validationError($validator->errors());
         }
 
-        $user = User::where('email', $request->email)->first();
-        if (!$user) {
-            return $this->error('User not found', 404);
+        try {
+            $status = Password::sendResetLink($request->only('email'));
+
+            if ($status === Password::RESET_LINK_SENT) {
+                return $this->success(null, 'Password reset link sent to your email');
+            }
+
+            return $this->error('Unable to send password reset link', 500);
+        } catch (\Exception $e) {
+            return $this->error('Failed to send password reset email: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/reset-password",
+     *     summary="Reset user password",
+     *     description="Reset user password using the token sent via email",
+     *     operationId="resetPassword",
+     *     tags={"Authentication"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email","password","password_confirmation","token"},
+     *             @OA\Property(property="email", type="string", format="email", example="samuel.eto@example.com"),
+     *             @OA\Property(property="password", type="string", format="password", minLength=8, example="newpassword123"),
+     *             @OA\Property(property="password_confirmation", type="string", format="password", example="newpassword123"),
+     *             @OA\Property(property="token", type="string", example="4f973efe692b209094bd724d39bbefcef04ec9c8ae26f36361b200ccafb7fdda")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Password reset successfully"),
+     *     @OA\Response(response=400, description="Invalid or expired token"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'token' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors());
         }
 
-        // Generate a password reset token
-        $token = app('auth.password.broker')->createToken($user);
+        try {
+            $status = Password::reset(
+                $request->only('email', 'password', 'password_confirmation', 'token'),
+                function ($user, $password) {
+                    $user->forceFill([
+                        'password' => Hash::make($password)
+                    ])->setRememberToken(Str::random(60));
+                    $user->save();
+                }
+            );
 
-        // Send the reset link via email
-        $user->sendPasswordResetNotification($token);
+            if ($status === Password::PASSWORD_RESET) {
+                return $this->success(null, 'Password reset successfully');
+            }
 
-        return $this->success(null, 'Password reset link sent to your email');
+            // Handle different password reset statuses
+            $message = match($status) {
+                Password::INVALID_TOKEN => 'Invalid or expired reset token',
+                Password::INVALID_USER => 'User not found',
+                default => 'Failed to reset password'
+            };
+
+            return $this->error($message, 400);
+        } catch (\Exception $e) {
+            return $this->error('Failed to reset password: ' . $e->getMessage(), 500);
+        }
     }
 
     /**

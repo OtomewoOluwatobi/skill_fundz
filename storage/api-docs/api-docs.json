@@ -857,10 +857,9 @@
                     "Authentication"
                 ],
                 "summary": "Send password reset link",
-                "description": "Sends a password reset link to the user's registered email address. The user will receive an email with a secure link to reset their password.",
+                "description": "Sends a password reset link to the user's registered email address",
                 "operationId": "forgotPassword",
                 "requestBody": {
-                    "description": "Email address to send password reset link to",
                     "required": true,
                     "content": {
                         "application/json": {
@@ -870,10 +869,9 @@
                                 ],
                                 "properties": {
                                     "email": {
-                                        "description": "User's registered email address",
                                         "type": "string",
                                         "format": "email",
-                                        "example": "john.doe@example.com"
+                                        "example": "john@example.com"
                                     }
                                 },
                                 "type": "object"
@@ -883,98 +881,13 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Password reset link sent successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": true
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Password reset link sent to your email"
-                                        },
-                                        "data": {
-                                            "type": "null",
-                                            "example": null
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                        "description": "Password reset link sent successfully"
                     },
                     "404": {
-                        "description": "User not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "User not found"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                        "description": "User not found"
                     },
                     "422": {
-                        "description": "Validation error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Validation failed"
-                                        },
-                                        "errors": {
-                                            "type": "object",
-                                            "example": {
-                                                "email": [
-                                                    "The email field is required.",
-                                                    "The email must be a valid email address.",
-                                                    "The selected email is invalid."
-                                                ]
-                                            }
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "success": {
-                                            "type": "boolean",
-                                            "example": false
-                                        },
-                                        "message": {
-                                            "type": "string",
-                                            "example": "Failed to send password reset email"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
+                        "description": "Validation error"
                     }
                 }
             }
