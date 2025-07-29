@@ -226,7 +226,7 @@ class UserController extends Controller
             }
 
             // Handle different password reset statuses
-            $message = match($status) {
+            $message = match ($status) {
                 Password::INVALID_TOKEN => 'Invalid or expired reset token',
                 Password::INVALID_USER => 'User not found',
                 default => 'Failed to reset password'
@@ -384,6 +384,211 @@ class UserController extends Controller
         $user->load('roles');
 
         return $this->success($user, 'Profile updated successfully');
+    }
+
+    /**
+     * Change user password.
+     * 
+     * @OA\Post(
+     *     path="/api/change-password",
+     *     summary="Change user password",
+     *     description="Allows the authenticated user to change their password by providing current password and new password with confirmation",
+     *     operationId="changePassword",
+     *     tags={"Profile"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Password change data",
+     *         @OA\JsonContent(
+     *             required={"current_password", "new_password", "new_password_confirmation"},
+     *             @OA\Property(
+     *                 property="current_password",
+     *                 type="string",
+     *                 format="password",
+     *                 example="currentPassword123",
+     *                 description="User's current password"
+     *             ),
+     *             @OA\Property(
+     *                 property="new_password",
+     *                 type="string",
+     *                 format="password",
+     *                 minLength=8,
+     *                 example="newPassword123",
+     *                 description="New password (minimum 8 characters)"
+     *             ),
+     *             @OA\Property(
+     *                 property="new_password_confirmation",
+     *                 type="string",
+     *                 format="password",
+     *                 example="newPassword123",
+     *                 description="Confirmation of new password (must match new_password)"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Password changed successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Password changed successfully"),
+     *             @OA\Property(property="data", type="null", example=null)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Current password is incorrect",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Current password is incorrect")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - Invalid or missing token",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Unauthorized")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 example={
+     *                     "current_password": {"The current password field is required."},
+     *                     "new_password": {"The new password field is required.", "The new password must be at least 8 characters."},
+     *                     "new_password_confirmation": {"The new password confirmation does not match."}
+     *                 }
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors());
+        }
+
+        $user = Auth::user();
+        /** @var \App\Models\User $user */
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return $this->error('Current password is incorrect', 400);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return $this->success(null, 'Password changed successfully');
+    }
+
+    /**
+     * Update user avatar.
+     * 
+     * @OA\Post(
+     *     path="/api/avatar",
+     *     summary="Upload user avatar",
+     *     description="Upload and update the authenticated user's profile avatar image",
+     *     operationId="uploadAvatar",
+     *     tags={"Profile"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Avatar image file",
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 required={"avatar"},
+     *                 @OA\Property(
+     *                     property="avatar",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="Avatar image file (JPEG, PNG, JPG, GIF - max 2MB)"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Avatar updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Avatar updated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="avatar",
+     *                     type="string",
+     *                     example="user-id/avatars/abc123def456.jpg",
+     *                     description="Path to the uploaded avatar image"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - Invalid or missing token",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Unauthorized")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Validation failed"),
+     *             @OA\Property(
+     *                 property="errors",
+     *                 type="object",
+     *                 example={
+     *                     "avatar": {
+     *                         "The avatar field is required.",
+     *                         "The avatar must be an image.",
+     *                         "The avatar must be a file of type: jpeg, png, jpg, gif.",
+     *                         "The avatar may not be greater than 2048 kilobytes."
+     *                     }
+     *                 }
+     *             )
+     *         )
+     *     )
+     * )
+     */
+    public function avatar(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationError($validator->errors());
+        }
+
+        $user = Auth::user();
+        /** @var \App\Models\User $user */
+
+        if ($request->hasFile('avatar')) {
+            $file = $request->file('avatar');
+            $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs($user->id.'/avatars', $filename, 'public');
+            $user->avatar = $path;
+            $user->save();
+        }
+
+        return $this->success(['avatar' => $user->avatar], 'Avatar updated successfully');
     }
 
     /**

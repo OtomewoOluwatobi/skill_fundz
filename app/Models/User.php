@@ -11,6 +11,8 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 use Spatie\Permission\Traits\HasRoles;
 use App\Notifications\EmailVerificationNotification;
 use App\Notifications\ResetPasswordNotification; // Add this
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
  * @OA\Schema(
@@ -32,7 +34,7 @@ use App\Notifications\ResetPasswordNotification; // Add this
  */
 class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
-    use HasFactory, Notifiable, HasRoles, CanResetPassword; // Add CanResetPassword
+    use HasFactory, Notifiable, HasRoles, CanResetPassword, SoftDeletes;
 
     /**
      * Indicates if the model's ID is auto-incrementing.
@@ -80,6 +82,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'email',
         'password',
         'otp',
+        'avatar',
         'is_verified',
         'email_verified_at',
     ];
@@ -92,6 +95,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'otp',
     ];
 
     /**
@@ -106,6 +110,17 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
             'password' => 'hashed',
             'is_verified' => 'boolean',
         ];
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->id)) {
+                $model->id = Str::uuid();
+            }
+        });
     }
 
     const USER_ROLES = [
