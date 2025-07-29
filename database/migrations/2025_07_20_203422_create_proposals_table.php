@@ -17,11 +17,15 @@ return new class extends Migration
             $table->uuid('user_id');
             $table->string('title');
             $table->text('description');
-            $table->decimal('budget', 10, 2);
+            $table->decimal('funding_goal', 10, 2);
             $table->string('timeline');
-            $table->text('impact');
-            $table->string('video_url')->nullable();
+            $table->text('expected_impact');
+            $table->string('video_pitch')->nullable();
             $table->enum('status', Proposal::listProposalStatuses(false))->default(Proposal::PROPOSAL_STATUSES['SUBMITTED']);
+            $table->text('admin_notes')->nullable();
+            $table->timestamp('reviewed_at')->nullable();
+            $table->uuid('reviewed_by')->nullable();
+            $table->json('documents')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

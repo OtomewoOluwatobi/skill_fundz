@@ -734,6 +734,378 @@
                 ]
             }
         },
+        "/api/proposals": {
+            "get": {
+                "tags": [
+                    "Proposals"
+                ],
+                "summary": "Get paginated proposals",
+                "description": "Retrieve proposals based on user role - entrepreneurs see their own, sponsors see approved ones, admins see all",
+                "operationId": "getProposals",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Filter by proposal status",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "submitted",
+                                "approved",
+                                "sponsored",
+                                "declined"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Number of items per page",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Proposals retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proposals retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Proposals"
+                ],
+                "summary": "Create new proposal (entrepreneurs only)",
+                "description": "Create a new funding proposal (entrepreneurs only)",
+                "operationId": "createProposal",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "title",
+                                    "description",
+                                    "funding_goal",
+                                    "timeline"
+                                ],
+                                "properties": {
+                                    "title": {
+                                        "type": "string",
+                                        "example": "Innovative Tech Startup"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "Revolutionary app that solves real-world problems"
+                                    },
+                                    "funding_goal": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 50000
+                                    },
+                                    "timeline": {
+                                        "type": "string",
+                                        "example": "6 months"
+                                    },
+                                    "expected_impact": {
+                                        "type": "string",
+                                        "example": "Will benefit 10,000+ users"
+                                    },
+                                    "video_pitch": {
+                                        "description": "Optional video file",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "documents": {
+                                        "description": "Supporting documents",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Proposal created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proposal created successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/proposals/{id}": {
+            "get": {
+                "tags": [
+                    "Proposals"
+                ],
+                "summary": "Get proposal details",
+                "description": "Retrieve detailed information about a specific proposal",
+                "operationId": "getProposal",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Proposal retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Proposal retrieved successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Proposals"
+                ],
+                "summary": "Update proposal (entrepreneurs for their own, admins for any)",
+                "description": "Update proposal details (entrepreneurs for their own, admins for any)",
+                "operationId": "updateProposal",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "funding_goal": {
+                                        "type": "number"
+                                    },
+                                    "timeline": {
+                                        "type": "string"
+                                    },
+                                    "expected_impact": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Proposal updated successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Proposals"
+                ],
+                "summary": "Delete proposal (entrepreneurs for their own, admins for any)",
+                "description": "Soft delete a proposal (entrepreneurs for their own, admins for any)",
+                "operationId": "deleteProposal",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Proposal deleted successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/proposals/{id}/status": {
+            "patch": {
+                "tags": [
+                    "Proposals"
+                ],
+                "summary": "Update proposal status (admin only)",
+                "description": "Update proposal status (admin only)",
+                "operationId": "updateProposalStatus",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "submitted",
+                                            "approved",
+                                            "sponsored",
+                                            "declined"
+                                        ]
+                                    },
+                                    "admin_notes": {
+                                        "description": "Optional admin notes",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Proposal status updated successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/proposals/statuses": {
+            "get": {
+                "tags": [
+                    "Proposals"
+                ],
+                "summary": "Get available proposal statuses",
+                "description": "Retrieve list of all available proposal statuses",
+                "operationId": "getProposalStatuses",
+                "responses": {
+                    "200": {
+                        "description": "Statuses retrieved successfully"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/register": {
             "post": {
                 "tags": [
@@ -1942,6 +2314,10 @@
         {
             "name": "Admin",
             "description": "Admin management endpoints"
+        },
+        {
+            "name": "Proposals",
+            "description": "Proposals"
         },
         {
             "name": "Authentication",
