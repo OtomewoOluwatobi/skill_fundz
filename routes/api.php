@@ -18,7 +18,6 @@ use App\Http\Controllers\API\AdminController;
 // Public Authentication routes (no middleware required)
 Route::post('/register', [UserController::class, 'register']);
 Route::post('/login', [UserController::class, 'login']);
-Route::post('/logout', [UserController::class, 'logout'])->middleware('auth:api');
 Route::post('/forgot-password', [UserController::class, 'forgotPassword']);
 Route::post('/reset-password', [UserController::class, 'resetPassword']);
 
@@ -36,7 +35,7 @@ Route::prefix('email')->name('verification.')->group(function () {
 Route::middleware('auth:api')->group(function () {
 
     // Authentication routes (require auth)
-    Route::post('/logout', [UserController::class, 'logout']);
+    Route::get('/logout', [UserController::class, 'logout']);
 
     // User profile routes (accessible by authenticated users)
     Route::get('/profile', [UserController::class, 'profile']);
