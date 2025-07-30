@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\AdminController;
+use App\Http\Controllers\API\ProposalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +43,20 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/profile', [UserController::class, 'updateProfile']);
     Route::get('/me', [UserController::class, 'profile']); // Alias for profile
 
+    // Proposal routes (accessible by authenticated users)
+    Route::prefix('proposals')->group(function () {
+        Route::get('/', [ProposalController::class, 'index']);                    // GET /api/proposals
+        Route::post('/', [ProposalController::class, 'store']);                   // POST /api/proposals
+        Route::get('/{proposal}', [ProposalController::class, 'show']);           // GET /api/proposals/{id}
+        Route::put('/{proposal}', [ProposalController::class, 'update']);         // PUT /api/proposals/{id}
+        Route::patch('/{proposal}', [ProposalController::class, 'update']);       // PATCH /api/proposals/{id}
+        Route::delete('/{proposal}', [ProposalController::class, 'destroy']);     // DELETE /api/proposals/{id}
+        
+        // Additional proposal-specific routes
+        Route::get('/user/{user}', [ProposalController::class, 'getUserProposals']); // GET user's proposals
+        Route::patch('/{proposal}/status', [ProposalController::class, 'updateStatus']); // Update proposal status
+    });
+
     // Admin only routes - User management
     Route::middleware('role:admin')->group(function () {
         // RESTful user resource routes (mapped to AdminController for proper admin functionality)
@@ -57,6 +72,13 @@ Route::middleware('auth:api')->group(function () {
 
         // Additional user management routes
         Route::get('/users/role/{role}', [AdminController::class, 'getUsersByRole']);
+
+        // Admin proposal management
+        Route::prefix('proposals')->group(function () {
+            Route::get('/all', [ProposalController::class, 'adminIndex']);        // GET all proposals (admin view)
+            Route::patch('/{proposal}/approve', [ProposalController::class, 'approve']); // Approve proposal
+            Route::patch('/{proposal}/reject', [ProposalController::class, 'reject']);   // Reject proposal
+        });
     });
 });
 

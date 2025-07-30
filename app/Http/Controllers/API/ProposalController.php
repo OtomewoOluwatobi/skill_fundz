@@ -17,29 +17,22 @@ class ProposalController extends Controller
         $this->middleware('auth:api');
     }
 
-    // Helper method to check user role
-    private function userHasRole(User $user, string $role): bool
-    {
-        // Assuming you have a 'role' column in users table
-        return $user->role === $role;
-    }
-
     // Helper method to check if user is admin
     private function isAdmin(User $user): bool
     {
-        return $this->userHasRole($user, 'admin');
+        return $user->hasRole('admin');
     }
 
     // Helper method to check if user is entrepreneur
     private function isEntrepreneur(User $user): bool
     {
-        return $this->userHasRole($user, 'entrepreneur');
+        return $user->hasRole('entrepreneur');
     }
 
     // Helper method to check if user is sponsor
     private function isSponsor(User $user): bool
     {
-        return $this->userHasRole($user, 'sponsor');
+        return $user->hasRole('sponsor');
     }
 
     /**
@@ -417,5 +410,37 @@ class ProposalController extends Controller
     public function getStatuses(): JsonResponse
     {
         return $this->success(Proposal::listProposalStatuses(), 'Statuses retrieved successfully');
+    }
+
+    private function success($data = null, string $message = 'Success', int $status = 200): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'data' => $data
+        ], $status);
+    }
+
+    private function error(string $message, int $status = 500, $errors = null): JsonResponse
+    {
+        $response = [
+            'success' => false,
+            'message' => $message
+        ];
+
+        if ($errors) {
+            $response['errors'] = $errors;
+        }
+
+        return response()->json($response, $status);
+    }
+
+    private function validationError($errors): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed',
+            'errors' => $errors
+        ], 422);
     }
 }
