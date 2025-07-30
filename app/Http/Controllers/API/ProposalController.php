@@ -37,6 +37,81 @@ class ProposalController extends Controller
 
     /**
      * @OA\Get(
+     *     path="/api/proposals/create",
+     *     summary="Get proposal creation form data (Only admins and sponsors can access this endpoint).",
+     *     description="Retrieve available proposal statuses and user role information for proposal creation form. Only admins and sponsors can access this endpoint.",
+     *     operationId="getProposalCreateData",
+     *     tags={"Proposals"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Available statuses retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Available proposal statuses retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(
+     *                     property="available_statuses",
+     *                     type="array",
+     *                     description="List of available proposal statuses based on user role",
+     *                     @OA\Items(type="string", enum={"submitted", "approved", "sponsored", "declined"})
+     *                 ),
+     *                 @OA\Property(
+     *                     property="user_role",
+     *                     type="string",
+     *                     description="Current user's role",
+     *                     example="admin"
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=403,
+     *         description="Unauthorized - Only admins and sponsors can access",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Unauthorized to access proposal creation")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthenticated - Token required",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="Unauthenticated")
+     *         )
+     *     )
+     * )
+     */
+    public function create(): JsonResponse
+    {
+            $user = Auth::user();
+
+            $availableStatuses = [];
+
+            if ($this->isAdmin($user)) {
+                // Admins can see all statuses
+                $availableStatuses = Proposal::PROPOSAL_STATUSES;
+            } elseif ($this->isSponsor($user)) {
+                // Sponsors can see approved and sponsored statuses
+                $availableStatuses = [
+                    Proposal::PROPOSAL_STATUSES['APPROVED'],
+                    Proposal::PROPOSAL_STATUSES['SPONSORED']
+                ];
+            } else {
+                return $this->error('Unauthorized to access proposal creation', 403);
+            }
+
+            return $this->success([
+                'available_statuses' => $availableStatuses,
+                'user_role' => $user->roles->pluck('name')->first()
+            ], 'Available proposal statuses retrieved successfully');
+    }
+
+    /**
+     * @OA\Get(
      *     path="/api/proposals",
      *     summary="Get paginated proposals",
      *     description="Retrieve proposals based on user role - entrepreneurs see their own, sponsors see approved ones, admins see all",
